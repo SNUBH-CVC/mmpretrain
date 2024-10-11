@@ -19,6 +19,7 @@ from .processing import (Albumentations, BEiTMaskGenerator, CleanCaption,
                          RandomTranslatePad, ResizeEdge, SimMIMMaskGenerator)
 from .utils import get_transform_idx, remove_transform
 from .wrappers import ApplyToList, MultiView
+from .monai import *
 
 for t in (CenterCrop, LoadImageFromFile, Normalize, RandomFlip,
           RandomGrayscale, RandomResize, Resize):

@@ -19,6 +19,7 @@ from .hrnet import HRNet
 from .inception_v3 import InceptionV3
 from .lenet import LeNet5
 from .levit import LeViT
+from .video_resnet import VideoResNet
 from .mixmim import MixMIMTransformer
 from .mlp_mixer import MlpMixer
 from .mobilenet_v2 import MobileNetV2
@@ -77,6 +78,7 @@ __all__ = [
     'MobileNetV3',
     'VisionTransformer',
     'SwinTransformer',
+    'VideoResNet',
     'TNT',
     'TIMMBackbone',
     'T2T_ViT',
