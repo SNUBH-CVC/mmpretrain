@@ -20,6 +20,7 @@ from .processing import (Albumentations, BEiTMaskGenerator, CleanCaption,
 from .utils import get_transform_idx, remove_transform
 from .wrappers import ApplyToList, MultiView
 from .monai import *
+from .snubhcvc import LoadCagSingleFrameSelectionData
 
 for t in (CenterCrop, LoadImageFromFile, Normalize, RandomFlip,
           RandomGrayscale, RandomResize, Resize):
@@ -38,5 +39,5 @@ __all__ = [
     'RandomFlip', 'RandomGrayscale', 'RandomResize', 'Resize', 'MultiView',
     'ApplyToList', 'CleanCaption', 'RandomTranslatePad',
     'RandomResizedCropAndInterpolationWithTwoPic', 'get_transform_idx',
-    'remove_transform', 'MAERandomResizedCrop'
+    'remove_transform', 'MAERandomResizedCrop', 'LoadCagSingleFrameSelectionData'
 ]

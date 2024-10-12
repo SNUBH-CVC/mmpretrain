@@ -1,5 +1,6 @@
-from mmpretrain.registry import TRANSFORMS
 from monai.transforms import RandZoomd, RandRotated, RandGaussianNoised, Resized, RepeatChanneld
+
+from mmpretrain.registry import TRANSFORMS
 
 
 @TRANSFORMS.register_module()

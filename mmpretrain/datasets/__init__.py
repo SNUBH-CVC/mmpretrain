@@ -20,6 +20,7 @@ from .nlvr2 import NLVR2
 from .oxfordiiitpet import OxfordIIITPet
 from .places205 import Places205
 from .cag_coronary import CAGCoronary
+from .cag_frame import CAGFrame
 from .samplers import *  # noqa: F401,F403
 from .stanfordcars import StanfordCars
 from .sun397 import SUN397
@@ -31,7 +32,7 @@ __all__ = [
     'DTD', 'FGVCAircraft', 'FashionMNIST', 'Flowers102', 'Food101', 'ImageNet',
     'ImageNet21k', 'InShop', 'KFoldDataset', 'MNIST', 'MultiLabelDataset',
     'MultiTaskDataset', 'NLVR2', 'OxfordIIITPet', 'Places205', 'SUN397',
-    'StanfordCars', 'VOC', 'build_dataset', 'CAGCoronary'
+    'StanfordCars', 'VOC', 'build_dataset', 'CAGCoronary', 'CAGFrame'
 ]
 
 if WITH_MULTIMODAL:

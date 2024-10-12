@@ -4,9 +4,9 @@ import cv2
 import numpy as np
 import pydicom
 import multiprocessing
-import pymongo
-from sklearn.model_selection import train_test_split
 import tqdm
+
+from utils import create_directories, divide_into_two_digits, normalize, split_dataset_by_patient, get_mongodb_database
 
 
 def parse_args():
@@ -21,57 +21,30 @@ def parse_args():
     return parser.parse_args()
 
 
-def divide_into_two_digits(number):
-    first_digit = (number + 1) // 2
-    second_digit = number - first_digit
-    return first_digit, second_digit
-
-
 def get_data_from_mongodb():
     """Retrieve relevant DICOM data from MongoDB"""
-    client = pymongo.MongoClient("mongodb://localhost:27017")
-    db = client["snubhcvc"]
-    collection = db["videos"]
+    db = get_mongodb_database()
+    collection = db.get_collection("frames")
     
-    query = {
-        "$and": [
-            {"data.category.is_valid": {"$in": [1, 2]}},
-            {"data.category.left_right": {"$exists": True}},
-        ]
-    }
+    query = {"data.category.is_valid": {"$in": [0, 1]}}
     
     results = collection.find(query)
     data = []
     for document in results:
         filename = document["filename"]
         patient_id = filename.split("/")[0]
-        coronary_cls = document["data"]["category"]["left_right"]
-        coronary_cls = "left" if coronary_cls == 0 else "right"
-        data.append({"patient_id": patient_id, "filename": filename, "cls": coronary_cls})
+        validity = document["data"]["category"]["is_valid"]
+        validity = "valid" if validity == 1 else "invalid"
+        data.append({"patient_id": patient_id, "filename": filename, "validity": validity})
     
     print(f"Retrieved {len(data)} documents from MongoDB")
     return data
 
 
-def create_directories(output_dir: Path, dataset_types, classes):
-    """Create directories for train/val/test and class_left/class_right."""
-    for dataset_type in dataset_types:
-        for cls in classes:
-            save_dir = output_dir / dataset_type / f"class_{cls}"
-            save_dir.mkdir(parents=True, exist_ok=True)
-
-
-def normalize(pixel_array):
-    """Normalize pixel values to 0-1 range."""
-    min_val = np.min(pixel_array)
-    max_val = np.max(pixel_array)
-    return (pixel_array - min_val) / (max_val - min_val)
-
-
 def process_single_dicom(data, image_size, dataset_dir: Path, output_dir: Path, dataset_type, num_frames_for_train):
     """Process a single DICOM file and save frames in the correct split folder."""
     filename = data["filename"]
-    coronary_cls = data["cls"]
+    validity = data["validity"]
 
     filepath = dataset_dir / filename
     if not filepath.exists():
@@ -82,7 +55,7 @@ def process_single_dicom(data, image_size, dataset_dir: Path, output_dir: Path, 
 
     basename_wo_ext = filepath.stem
     uid = f"{patient_id}_{study_date}_{basename_wo_ext}"
-    class_folder = f"class_{coronary_cls}"  # Example class name based on coronary_cls
+    class_folder = f"class_{validity}"  # Example class name based on coronary_cls
     save_dir = output_dir / dataset_type / class_folder
     image_save_path = save_dir / f"{uid}.npy"
     if image_save_path.exists():
@@ -130,33 +103,6 @@ def process_single_dicom(data, image_size, dataset_dir: Path, output_dir: Path, 
     np.save(image_save_path, image[None])  # image.shape: (C, T, H, W)
 
 
-def split_dataset_by_patient(data, test_size, val_size):
-    """Split the dataset into train, val, and test sets based on patient IDs."""
-    # Collect unique patient IDs
-    patient_ids = list(set([d['patient_id'] for d in data]))
-    
-    # Split patient IDs into train+val and test
-    train_val_ids, test_ids = train_test_split(patient_ids, test_size=test_size, random_state=42)
-    
-    # Adjust val_size to account for the reduced dataset after the test split
-    val_size_adjusted = val_size / (1 - test_size)
-    
-    # Split train_val_ids into train and val
-    train_ids, val_ids = train_test_split(train_val_ids, test_size=val_size_adjusted, random_state=42)
-    
-    # Assign data entries to splits based on patient IDs
-    train_data = [d for d in data if d['patient_id'] in train_ids]
-    val_data = [d for d in data if d['patient_id'] in val_ids]
-    test_data = [d for d in data if d['patient_id'] in test_ids]
-    
-    print(f"Total patients: {len(patient_ids)}")
-    print(f"Train patients: {len(train_ids)}, Data entries: {len(train_data)}")
-    print(f"Validation patients: {len(val_ids)}, Data entries: {len(val_data)}")
-    print(f"Test patients: {len(test_ids)}, Data entries: {len(test_data)}")
-    
-    return train_data, val_data, test_data
-
-
 def main():
     args = parse_args()
 
@@ -175,7 +121,7 @@ def main():
 
 
     # Define classes based on left/right coronary classifications
-    classes = ['left', 'right']
+    classes = ['valid', 'invalid']
 
     # Create directories for train, val, and test splits with class folders
     create_directories(Path(args.output_dir), ['train', 'val', 'test'], classes)
@@ -199,3 +145,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
