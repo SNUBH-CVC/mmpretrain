@@ -8,6 +8,9 @@ Refer to the `./Dockerfile`
 ```
 # CAG coronary classification
 python tools/train.py configs/video_resnet/video_resnet_cag_coronary.py
+
+# CAG frame selection
+python tools/train.py configs/video_resnet/video_resnet_cag_frame.py
 ```
 
 ## Inference

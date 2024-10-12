@@ -1,4 +1,5 @@
 import argparse
+from pathlib import Path
 
 import numpy as np
 from mmengine import Config
@@ -33,16 +34,20 @@ def main():
     transforms = Compose(transforms)
 
     # Load and preprocess the image
-    img = np.load(args.image_path)
-    inputs = {'img': img}
-    inputs = {'inputs': transforms(inputs)['inputs'].to(device)}
+    image_path = Path(args.image_path)
+    gt_label = int(image_path.stem.split("_")[-1])
+    img = np.load(image_path)
+    inputs = transforms(inputs)
+    gt_label = inputs['data_samples'].gt_label
+    inputs = {"inputs": inputs["inputs"].to(device)}
     data = model.data_preprocessor(inputs)
     img = data["inputs"].unsqueeze(0)
 
     # Run the model for prediction
     out = model(img, mode="predict")
-    print(out)
+    print(gt_label, out)
 
 
 if __name__ == "__main__":
     main()
+

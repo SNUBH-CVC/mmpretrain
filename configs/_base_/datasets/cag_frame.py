@@ -12,9 +12,7 @@ prob = 0.5
 train_pipeline = [
     dict(type='LoadCagSingleFrameSelectionData', num_sample_frames=num_classes, buffer=5),
     dict(type='MonaiResized', keys=["img"], spatial_size=(-1, 256, 256)),
-    dict(type='MonaiRandZoomd', keys=["img"], prob=prob, min_zoom=0.8, max_zoom=1.2),
     dict(type='MonaiRandRotated', keys=["img"], prob=prob, range_x=(-0.26, 0.26), padding_mode="zeros"),
-    dict(type='MonaiRandGaussianNoised', keys=["img"], prob=prob),
     dict(type='MonaiRepeatChanneld', keys=["img"], repeats=3),
     dict(type='PackInputs'),
 ]
@@ -44,7 +42,7 @@ val_dataloader = dict(
         type=dataset_type,
         data_root='data/cag_frame_selection',
         split='val',
-        pipeline=train_pipeline),
+        pipeline=val_pipeline),
     sampler=dict(type='DefaultSampler', shuffle=True),
 )
 

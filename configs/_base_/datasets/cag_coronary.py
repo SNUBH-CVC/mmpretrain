@@ -41,7 +41,7 @@ val_dataloader = dict(
         type=dataset_type,
         data_root='data/cag_coronary_classification',
         split='val',
-        pipeline=train_pipeline),
+        pipeline=val_pipeline),
     sampler=dict(type='DefaultSampler', shuffle=True),
 )
 
