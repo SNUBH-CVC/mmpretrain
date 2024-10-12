@@ -24,9 +24,9 @@ def parse_args():
 def get_data_from_mongodb():
     """Retrieve relevant DICOM data from MongoDB"""
     db = get_mongodb_database()
-    collection = db.get_collection("frames")
+    collection = db.get_collection("videos")
     
-    query = {"data.category.is_valid": {"$in": [0, 1]}}
+    query = {"data.category.is_valid": {"$in": [0, 1]}}  # 2는 제외
     
     results = collection.find(query)
     data = []

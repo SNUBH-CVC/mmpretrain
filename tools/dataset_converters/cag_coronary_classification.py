@@ -1,11 +1,11 @@
 import argparse
 from pathlib import Path
+
+import tqdm
 import cv2
 import numpy as np
 import pydicom
 import multiprocessing
-import pymongo
-import tqdm
 
 from utils import split_dataset_by_patient, normalize, create_directories, divide_into_two_digits, get_mongodb_database
 
