@@ -46,7 +46,7 @@ val_dataloader = dict(
     sampler=dict(type='DefaultSampler', shuffle=True),
 )
 
-val_evaluator = dict(type="Accuracy", topk=(1, ))
+val_evaluator = dict(type="Accuracy", topk=(1, 5))  
 
 test_dataloader = val_dataloader
 test_evaluator = val_evaluator
