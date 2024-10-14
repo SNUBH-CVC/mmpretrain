@@ -15,6 +15,7 @@ def parse_args():
     parser.add_argument("output_dir", type=str, help="Output directory for processed images")
     parser.add_argument("--image_size", type=int, default=512, help="Size to which images will be resized")
     parser.add_argument("--num_frames_for_train", type=int, default=60, help="Number of frames to use for training")
+    parser.add_argument("--num_interval", type=int, default=1, help="Interval for frame sampling if pixel array length is too large")
     parser.add_argument("--num_processes", type=int, default=None, help="Number of processes to use for multiprocessing")
     parser.add_argument("--test_size", type=float, default=0.1, help="Fraction of the data to use for testing")
     parser.add_argument("--val_size", type=float, default=0.1, help="Fraction of the data to use for validation")
@@ -41,7 +42,7 @@ def get_data_from_mongodb():
     return data
 
 
-def process_single_dicom(data, image_size, dataset_dir: Path, output_dir: Path, dataset_type, num_frames_for_train):
+def process_single_dicom(data, image_size, dataset_dir: Path, output_dir: Path, dataset_type, num_frames_for_train: int, num_interval: int):
     """Process a single DICOM file and save frames in the correct split folder."""
     filename = data["filename"]
     validity = data["validity"]
@@ -75,6 +76,12 @@ def process_single_dicom(data, image_size, dataset_dir: Path, output_dir: Path, 
         pixel_array = np.stack(
             [cv2.resize(frame, (image_size, image_size)) for frame in pixel_array]
         )
+
+    # Sample frames if necessary
+    num_frames = len(pixel_array)
+    if num_frames > num_interval * num_frames_for_train:
+        pixel_array = pixel_array[::num_interval]
+        num_frames = len(pixel_array)
 
     # Save as .jpeg format for each frame in the appropriate folder (train/val/test)
     num_frames = len(pixel_array)
@@ -127,9 +134,9 @@ def main():
     create_directories(Path(args.output_dir), ['train', 'val', 'test'], classes)
 
     # Combine all data into a single list with dataset type
-    all_data = [(d, args.image_size, dataset_dir, output_dir, 'train', args.num_frames_for_train) for d in train_data] + \
-               [(d, args.image_size, dataset_dir, output_dir, 'val', args.num_frames_for_train) for d in val_data] + \
-               [(d, args.image_size, dataset_dir, output_dir, 'test', args.num_frames_for_train) for d in test_data]
+    all_data = [(d, args.image_size, dataset_dir, output_dir, 'train', args.num_frames_for_train, args.num_interval) for d in train_data] + \
+               [(d, args.image_size, dataset_dir, output_dir, 'val', args.num_frames_for_train, args.num_interval) for d in val_data] + \
+               [(d, args.image_size, dataset_dir, output_dir, 'test', args.num_frames_for_train, args.num_interval) for d in test_data]
 
     # Multiprocessing for parallel processing of all DICOM files
     with multiprocessing.Pool(args.num_processes) as pool:
