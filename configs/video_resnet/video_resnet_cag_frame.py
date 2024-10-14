@@ -10,3 +10,6 @@ model = dict(
             type='LabelSmoothLoss', label_smooth_val=0.1, mode='original'),
     )
 )
+
+visualizer = dict(
+    type='UniversalVisualizer', vis_backends=[dict(type='WandbVisBackend')])
