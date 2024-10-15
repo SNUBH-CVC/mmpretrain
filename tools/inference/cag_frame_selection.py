@@ -61,9 +61,9 @@ def main():
     image_dir_path = Path(args.image_dir)
     output_dir_path = Path(args.output_dir)
     output_dir_path.mkdir(parents=True, exist_ok=True)
-    image_path_list = image_dir_path.glob("*.npy")
+    image_path_list = list(image_dir_path.glob("*.npy"))
 
-    for img_path in tqdm(image_path_list):
+    for img_path in tqdm(image_path_list, total=len(image_path_list)):
         gt_label = int(img_path.stem.split("_")[-1])
         img = np.load(img_path)
         inputs = {'img': img, "gt_label": gt_label}

@@ -32,7 +32,7 @@ class LoadCagSingleFrameSelectionData(Transform):
             new_s_idx = np.random.choice(new_s_idx_range)
             new_e_idx = new_s_idx + self.num_sample_frames - 1
 
-            new_frames = frames[:, max(0, new_s_idx) : min(num_frames, new_e_idx + 1)]
+            new_frames = frames[:, max(0, new_s_idx): min(num_frames, new_e_idx + 1)]
             if new_s_idx < 0:
                 new_frames = np.concatenate(
                     [
@@ -54,13 +54,13 @@ class LoadCagSingleFrameSelectionData(Transform):
         else:
             # Non-random: either zero-pad or slice middle range
             if num_frames >= self.num_sample_frames:
-                # Slice middle range
-                s_idx = max(0, (num_frames - self.num_sample_frames) // 2)
-                e_idx = s_idx + self.num_sample_frames
-                new_frames = frames[:, s_idx:e_idx]
+                # Slice middle range including gt_label index
+                s_idx = max(0, frame_idx - self.num_sample_frames // 2)
+                e_idx = min(num_frames - 1, s_idx + self.num_sample_frames - 1)
+                s_idx = e_idx - self.num_sample_frames + 1 # Ensure exact size
+                new_frames = frames[:, s_idx: e_idx + 1]
                 new_frame_idx = frame_idx - s_idx
             else:
-                # Zero padding to match num_sample_frames
                 pad_left = (self.num_sample_frames - num_frames) // 2
                 pad_right = self.num_sample_frames - num_frames - pad_left
                 new_frames = np.concatenate(
@@ -79,3 +79,30 @@ class LoadCagSingleFrameSelectionData(Transform):
         data["gt_label"] = new_frame_idx
 
         return data
+
+
+def main():
+    # test cases
+    transform = LoadCagSingleFrameSelectionData(random=False)
+
+    # insufficient case
+    img = np.zeros([1, 30, 32, 32])
+    gt_label = 5
+    out = transform({'img': img, 'gt_label': gt_label})
+    assert out['gt_label'] == 20
+
+    # sufficient case
+    img = np.zeros([1, 100, 32, 32])
+    gt_label = 5
+    out = transform({'img': img, 'gt_label': gt_label})
+    assert out['gt_label'] == 5
+
+    gt_label = 50
+    out = transform({'img': img, 'gt_label': gt_label})
+    assert out['gt_label'] == 30
+
+    # exact case
+    img = np.zeros([1, 60, 32, 32])
+    gt_label = 5
+    out = transform({'img': img, 'gt_label': gt_label})
+    assert out['gt_label'] ==5
