@@ -7,7 +7,8 @@ import numpy as np
 import pydicom
 import tqdm
 
-from utils import split_dataset_by_patient, normalize, create_directories, get_mongodb_database
+from mmpretrain_utils.preprocess import split_dataset_by_patient, normalize
+from mmpretrain_utils.utils import create_directories, get_mongodb_database
 
 
 def parse_args():

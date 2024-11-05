@@ -9,3 +9,6 @@ model = dict(
         loss=dict(type='CrossEntropyLoss', loss_weight=1.0),  
     )
 )
+
+visualizer = dict(
+    type='UniversalVisualizer', vis_backends=[dict(type='WandbVisBackend')])

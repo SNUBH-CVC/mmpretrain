@@ -42,6 +42,6 @@ USER $USERNAME
 RUN echo 'export PATH="$HOME/.local/bin:$PATH"' > $HOME/.bashrc
 
 RUN pip install mmcv==2.1.0 mmengine ftfy regex ipykernel
-RUN pip install monai wandb
+RUN pip install monai wandb pydicom gdcm pylibjpeg pylibjpeg-libjpeg numpy==1.26.2 
 
 WORKDIR /workspaces

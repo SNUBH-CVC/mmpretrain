@@ -1,12 +1,11 @@
 import argparse
 from pathlib import Path
-import cv2
 import numpy as np
-import pydicom
 import multiprocessing
 import tqdm
 
-from utils import create_directories, divide_into_two_digits, normalize, split_dataset_by_patient, get_mongodb_database
+from mmpretrain_utils.utils import create_directories, get_mongodb_database
+from mmpretrain_utils.preprocess import load_and_process_dicom, adjust_frames, split_dataset_by_patient
 
 
 def parse_args():
@@ -63,51 +62,21 @@ def process_single_dicom(data, image_size, dataset_dir: Path, output_dir: Path, 
         print(f"File already exists: {image_save_path}")
         return
 
-    dcm = pydicom.dcmread(filepath)
-    pixel_array = dcm.pixel_array
-    if pixel_array.dtype != np.uint8:
-        pixel_array = (normalize(pixel_array) * 255).astype(np.uint8)
+    try:
+        image = load_and_process_dicom(filepath, image_size)
+        if image is None:
+            print(f"Error loading and processing DICOM file {filepath}")
+            return
+        image = adjust_frames(image, num_frames_for_train, image_size)
 
-    # Ensure 3D pixel array (frames, height, width)
-    assert len(pixel_array.shape) == 3, "Expected 3D pixel array"
+        # Validate final image shape
+        assert (
+            len(image) == num_frames_for_train
+        ), f"Expected {num_frames_for_train} frames, got {len(image)}"
 
-    # Resize
-    if pixel_array.shape[1] != image_size or pixel_array.shape[2] != image_size:
-        pixel_array = np.stack(
-            [cv2.resize(frame, (image_size, image_size)) for frame in pixel_array]
-        )
-
-    # Sample frames if necessary
-    num_frames = len(pixel_array)
-    if num_frames > num_interval * num_frames_for_train:
-        pixel_array = pixel_array[::num_interval]
-        num_frames = len(pixel_array)
-
-    # Save as .jpeg format for each frame in the appropriate folder (train/val/test)
-    num_frames = len(pixel_array)
-
-    if num_frames < num_frames_for_train:
-        # Handle case where we need to add frames
-        frames_to_add = num_frames_for_train - num_frames
-        pre_frames, post_frames = divide_into_two_digits(frames_to_add)
-
-        pre_mask = np.zeros([pre_frames, image_size, image_size], dtype=np.uint8)
-        post_mask = np.zeros([post_frames, image_size, image_size], dtype=np.uint8)
-
-        image = np.concatenate([pre_mask, pixel_array, post_mask], axis=0)
-    else:
-        # Handle case where we need to select a subset of frames
-        frames_to_add = num_frames - num_frames_for_train
-        pre_frames, post_frames = divide_into_two_digits(frames_to_add)
-
-        image = pixel_array[pre_frames : num_frames - post_frames]
-
-    # Validate final image shape
-    assert (
-        len(image) == num_frames_for_train
-    ), f"Expected {num_frames_for_train} frames, got {len(image)}"
-
-    np.save(image_save_path, image[None])  # image.shape: (C, T, H, W)
+        np.save(image_save_path, image[None])  # image.shape: (C, T, H, W)
+    except Exception as e:
+        print(f"Error processing {filepath}: {e}")
 
 
 def main():
