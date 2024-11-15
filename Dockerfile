@@ -34,7 +34,7 @@ RUN groupadd --gid $USER_GID $USERNAME \
 
 RUN groupmod --gid $USER_GID $USERNAME \
     && usermod --uid $USER_UID --gid $USER_GID $USERNAME \
-    && chown -R $USER_UID:$USER_GID /opt/conda
+    && chown -R 777 /opt/conda
 
 # [Optional] Set the default user. Omit if you want to keep the default as root.
 USER $USERNAME
