@@ -1,11 +1,10 @@
 from pathlib import Path
 
 import pymongo
-from sklearn.model_selection import train_test_split
 
 
 def get_mongodb_database():
-    client = pymongo.MongoClient("mongodb://localhost:27017")
+    client = pymongo.MongoClient("mongodb://172.30.1.46:27017")
     return client.get_database("snubhcvc")
 
 
