@@ -11,6 +11,7 @@ from mmengine import Config
 from mmengine.dataset import Compose
 from mmpretrain import init_model
 from mmpretrain.datasets.transforms import TRANSFORMS
+from mmpretrain_utils.utils import get_mongodb_database
 from mmpretrain_utils.preprocess import load_and_process_dicom, adjust_frames  # Import necessary functions
 
 
@@ -24,6 +25,12 @@ def parse_args():
     parser.add_argument("--image_size", type=int, default=512, help="Size to which the image will be resized")
     parser.add_argument("--num_frames_for_train", type=int, default=60, help="Number of frames for training")
     return parser.parse_args()
+
+
+def get_valid_xa_list_from_mongodb():
+    db = get_mongodb_database()
+    collection = db.get_collection("videos_prediction")
+    return list(collection.find({"data.category.is_valid": 1}))
 
 
 def main():
@@ -62,15 +69,18 @@ def main():
             csv_writer.writerow(['patient_id', 'study_date', 'series_no', 'coronary_cls'])
 
         # Iterate over DICOM files in the directory
-        data_dir = Path(args.data_dir)
-        dcm_path_list = list(data_dir.glob("*/*/XA/*.dcm"))
-        print(f"Processing {len(dcm_path_list)} DICOM files")
-        for dcm_path in tqdm.tqdm(dcm_path_list, total=len(dcm_path_list)):
-            patient_id = dcm_path.parents[2].name
-            study_date = dcm_path.parents[1].name
-            series_no = dcm_path.stem
+        valid_xa_list = get_valid_xa_list_from_mongodb()
+        print(f"Processing {len(valid_xa_list)} DICOM files")
+        for valid_xa in tqdm.tqdm(valid_xa_list, total=len(valid_xa_list)):
+            filename = valid_xa["filename"]
+            patient_id, study_date, _, basename = filename.split("_")
+            series_no_str = basename.split(".")[0]
+            dcm_path = Path(args.data_dir) / filename
+            if not dcm_path.exists():
+                print(f"DICOM file not found: {dcm_path}")
+                continue
 
-            key = f"{patient_id}_{study_date}_{series_no}"
+            key = f"{patient_id}_{study_date}_{series_no_str}"
             if processed_files.get(key, False):
                 continue
 
@@ -97,7 +107,7 @@ def main():
                 pred_label = 'right'
 
             # Write the result to the CSV file
-            csv_writer.writerow([patient_id, study_date, series_no, pred_label])
+            csv_writer.writerow([patient_id, study_date, series_no_str, pred_label])
 
 
 if __name__ == "__main__":
