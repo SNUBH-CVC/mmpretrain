@@ -1,3 +1,11 @@
+"""
+python tools/dataset_converters/cag_coronary_classification.py \
+    /mnt/nas/snubhcvc/raw/cag_ccta_1yr_all/data \
+    /mnt/nas/snubhcvc/raw/cpacs \
+    --output_dir ./data/cag_coronary_classification
+    --num_processes 4
+"""
+
 import argparse
 from pathlib import Path
 
@@ -6,7 +14,7 @@ import pandas as pd
 import numpy as np
 import multiprocessing
 
-from mmpretrain_utils.preprocess import split_dataset_by_patient, adjust_frames, load_and_process_dicom
+from mmpretrain_utils.preprocess import split_dataset_by_patient, resample_frames_evenly, load_and_process_dicom
 from mmpretrain_utils.utils import create_directories, get_mongodb_database
 
 
@@ -76,6 +84,7 @@ def get_data_from_mongodb():
     query = {
         "$and": [
             {"data.category.left_right": {"$in": [0, 1]}},
+            {"data.category.is_valid": {"$in": [1]}}
         ]
     }
     
@@ -130,7 +139,7 @@ def process_single_dicom(data, image_size, dataset_dirs: list[Path], output_dir:
         if image is None:
             print(f"Error loading and processing DICOM file {filepath}")
             return
-        image = adjust_frames(image, num_frames_for_train, image_size)
+        image = resample_frames_evenly(image, num_frames_for_train, image_size)
 
         # Validate final image shape
         assert (

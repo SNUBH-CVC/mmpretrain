@@ -1,3 +1,11 @@
+"""
+python tools/inference/cag_frame_selection.py \
+    work_dirs/video_resnet_cag_frame/video_resnet_cag_frame.py \
+    work_dirs/video_resnet_cag_frame/epoch_48.pth \
+    ./data/cag_frame_selection/test \
+    ./results/241230_cag_frame_selection
+"""
+
 import argparse
 from pathlib import Path
 from tqdm import tqdm
@@ -8,6 +16,7 @@ from mmengine import Config
 from mmengine.dataset import Compose
 from mmpretrain import init_model
 from mmpretrain.datasets.transforms import TRANSFORMS
+from mmpretrain_utils.utils import get_kth_largest_rank
 
 
 def parse_args():
@@ -18,27 +27,6 @@ def parse_args():
     parser.add_argument("output_dir", type=str, help="Directory to save output files")
     parser.add_argument("--device", type=str, default="cuda:0", help="Device to run the inference on, e.g., 'cuda:0' or 'cpu'")
     return parser.parse_args()
-
-
-def get_kth_largest_rank(arr, index):
-    """
-    Returns the rank (1-based) of the element at the specified index 
-    in terms of largest values in the array.
-    
-    Parameters:
-    arr (np.ndarray): The input array.
-    index (int): The index of the element whose rank is to be found.
-    
-    Returns:
-    int: The rank of the element at the given index.
-    """
-    # Get the indices that would sort the array in descending order
-    sorted_indices = np.argsort(arr)[::-1]
-    
-    # Find the 1-based rank of the specified index
-    k = np.where(sorted_indices == index)[0][0] + 1
-    
-    return k
 
 
 def main():
@@ -63,6 +51,9 @@ def main():
     output_dir_path.mkdir(parents=True, exist_ok=True)
     image_path_list = list(image_dir_path.glob("*.npy"))
 
+    diff_histogram_data = []
+    top_k_histogram_data = []
+
     for img_path in tqdm(image_path_list, total=len(image_path_list)):
         gt_label = int(img_path.stem.split("_")[-1])
         img = np.load(img_path)
@@ -83,6 +74,9 @@ def main():
         gt_top_k = get_kth_largest_rank(pred_scores, gt_label)
         pred_score = pred_scores[pred_label]
         gt_score = pred_scores[gt_label]
+        gt_pred_diff = abs(gt_label - pred_label)
+        diff_histogram_data.append(gt_pred_diff)
+        top_k_histogram_data.append(gt_top_k)
 
         fig, axes = plt.subplots(1, 2, figsize=(20, 10))
         pred_frame_idx = out.pred_label[0]
@@ -96,6 +90,16 @@ def main():
         output_path = output_dir_path / f"{img_path.stem}.png"
         fig.savefig(output_path)
         plt.close(fig)
+
+    diff_histogram_data = np.array(diff_histogram_data)
+    plt.hist(diff_histogram_data, bins=np.arange(0, 61))
+    plt.savefig(output_dir_path / "diff_histogram.png")
+    plt.close()
+
+    top_k_histogram_data = np.array(top_k_histogram_data)
+    plt.hist(top_k_histogram_data, bins=np.arange(0, 61))
+    plt.savefig(output_dir_path / "top_k_histogram.png")
+    plt.close()
 
 
 if __name__ == "__main__":

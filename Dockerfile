@@ -34,7 +34,7 @@ RUN groupadd --gid $USER_GID $USERNAME \
 
 RUN groupmod --gid $USER_GID $USERNAME \
     && usermod --uid $USER_UID --gid $USER_GID $USERNAME \
-    && chown -R 777 /opt/conda
+    && chmod -R 777 /opt/conda
 
 # [Optional] Set the default user. Omit if you want to keep the default as root.
 USER $USERNAME
@@ -42,6 +42,6 @@ USER $USERNAME
 RUN echo 'export PATH="$HOME/.local/bin:$PATH"' > $HOME/.bashrc
 
 RUN pip install mmcv==2.1.0 mmengine ftfy regex ipykernel
-RUN pip install monai wandb pydicom gdcm pylibjpeg pylibjpeg-libjpeg numpy==1.26.2 
+RUN pip install monai wandb pydicom gdcm pylibjpeg pylibjpeg-libjpeg numpy==1.26.2 scikit-learn pymongo pandas tabulate
 
 WORKDIR /workspaces

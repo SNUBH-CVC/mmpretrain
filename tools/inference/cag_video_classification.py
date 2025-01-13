@@ -1,9 +1,9 @@
 """
-python tools/inference/cag_coronary_classification.py \
-    work_dirs/video_resnet_cag_coronary/video_resnet_cag_coronary.py \
-    work_dirs/video_resnet_cag_coronary/epoch_38.pth \
+python tools/inference/cag_video_classification.py \
+    work_dirs/video_resnet_cag_video/video_resnet_cag_video.py \
+    work_dirs/video_resnet_cag_video/epoch_65.pth \
     /mnt/nas/snubhcvc/raw/cag_ccta_1yr_all/data /mnt/nas/snubhcvc/raw/cpacs \
-    --output_path cag_coronary_classification_inference_results_1.csv
+    --output_path cag_video_classification_inference_results_1.csv
 """
 
 import argparse
@@ -23,7 +23,7 @@ def parse_args():
     parser.add_argument("config_path", type=str, help="Path to the model config file")
     parser.add_argument("checkpoint_path", type=str, help="Path to the model checkpoint file")
     parser.add_argument("data_dirs", nargs="+", type=str, help="Directory path containing DICOM files")
-    parser.add_argument("--output_path", type=str, default="cag_coronary_classification_inference_results.csv", help="Path to save the results")
+    parser.add_argument("--output_path", type=str, default="cag_video_classification_inference_results.csv", help="Path to save the results")
     parser.add_argument("--device", type=str, default="cuda:1", help="Device to run the inference on, e.g., 'cuda:0' or 'cpu'")
     parser.add_argument("--image_size", type=int, default=512, help="Size to which the image will be resized")
     parser.add_argument("--num_frames_for_train", type=int, default=60, help="Number of frames for training")
@@ -55,10 +55,10 @@ def main():
     # Iterate over DICOM files in the directory
     valid_xa_list = get_valid_xa_list_from_mongodb()
     num_valid_xa = len(valid_xa_list)
-    print(f"Processing {len(valid_xa_list)} DICOM files")
+    print(f"Processing {num_valid_xa} DICOM files")
 
-    with CSVManager(args.output_path, ['patient_id', 'study_date', 'series_no', 'coronary_cls']) as csv_manager:
-        for valid_xa in tqdm.tqdm(valid_xa_list, total=num_valid_xa):
+    with CSVManager(args.output_path, ['patient_id', 'study_date', 'series_no', 'video_cls']) as csv_manager:
+        for valid_xa in tqdm.tqdm(valid_xa_list, total=len(valid_xa_list)):
             filename = valid_xa["filename"]
             patient_id, study_date, _, basename = filename.split("/")
             series_no_str = basename.split(".")[0]
@@ -92,10 +92,11 @@ def main():
             out = model(img, mode="predict")
             pred_label = out[0].pred_label.item()
             if pred_label == 0:
-                pred_label = 'left'
+                pred_label = 'invalid'
             else:
-                pred_label = 'right'
+                pred_label = 'valid'
 
+            # Write the result to the CSV file
             csv_manager.write_row([patient_id, study_date, series_no_str, pred_label])
 
 

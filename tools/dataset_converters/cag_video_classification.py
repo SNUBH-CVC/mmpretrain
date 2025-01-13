@@ -1,3 +1,10 @@
+"""
+python tools/dataset_converters/cag_video_classification.py \
+    /mnt/nas/snubhcvc/raw/cag_ccta_1yr_all/data \
+    /mnt/nas/snubhcvc/raw/cpacs \
+    --output_dir ./data/cag_video_classification
+"""
+
 import argparse
 from pathlib import Path
 import numpy as np
@@ -5,13 +12,13 @@ import multiprocessing
 import tqdm
 
 from mmpretrain_utils.utils import create_directories, get_mongodb_database
-from mmpretrain_utils.preprocess import load_and_process_dicom, adjust_frames, split_dataset_by_patient
+from mmpretrain_utils.preprocess import load_and_process_dicom, resample_frames_evenly, split_dataset_by_patient
 
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("dataset_dir", type=str, help="Directory containing DICOM data")
-    parser.add_argument("output_dir", type=str, help="Output directory for processed images")
+    parser.add_argument("dataset_dirs", nargs="+", type=str, help="List of directories containing DICOM data")
+    parser.add_argument("--output_dir", type=str, help="Output directory for processed images")
     parser.add_argument("--image_size", type=int, default=512, help="Size to which images will be resized")
     parser.add_argument("--num_frames_for_train", type=int, default=60, help="Number of frames to use for training")
     parser.add_argument("--num_interval", type=int, default=1, help="Interval for frame sampling if pixel array length is too large")
@@ -24,11 +31,20 @@ def parse_args():
 def get_data_from_mongodb():
     """Retrieve relevant DICOM data from MongoDB"""
     db = get_mongodb_database()
-    collection = db.get_collection("videos")
-    
-    query = {"data.category.is_valid": {"$in": [0, 1]}}  # 2는 제외
-    
-    results = collection.find(query)
+    videos_collection = db.get_collection("videos")
+
+    query = {
+        "$or": [
+            {
+                "data.category.is_valid": {"$in": [1]},
+                "data.category.left_right": {"$exists": True}
+            },
+            {
+                "data.category.is_valid": {"$in": [0]},
+            }
+        ]
+    }
+    results = videos_collection.find(query)
     data = []
     for document in results:
         filename = document["filename"]
@@ -41,15 +57,17 @@ def get_data_from_mongodb():
     return data
 
 
-def process_single_dicom(data, image_size, dataset_dir: Path, output_dir: Path, dataset_type, num_frames_for_train: int, num_interval: int):
+def process_single_dicom(data, image_size, dataset_dirs: list[Path], output_dir: Path, dataset_type, num_frames_for_train: int, num_interval: int):
     """Process a single DICOM file and save frames in the correct split folder."""
     filename = data["filename"]
     validity = data["validity"]
 
-    filepath = dataset_dir / filename
+    filepath = dataset_dirs[0] / filename
     if not filepath.exists():
-        print(f"No such file: {filepath}")
-        return
+        filepath = dataset_dirs[1] / filename
+        if not filepath.exists():
+            print(f"No such file: {filepath}")
+            return
     patient_id = filepath.parents[2].name
     study_date = filepath.parents[1].name
 
@@ -67,7 +85,7 @@ def process_single_dicom(data, image_size, dataset_dir: Path, output_dir: Path, 
         if image is None:
             print(f"Error loading and processing DICOM file {filepath}")
             return
-        image = adjust_frames(image, num_frames_for_train, image_size)
+        image = resample_frames_evenly(image, num_frames_for_train, image_size)
 
         # Validate final image shape
         assert (
@@ -83,7 +101,7 @@ def main():
     args = parse_args()
 
     # Output directory setup
-    dataset_dir = Path(args.dataset_dir)
+    dataset_dirs = [Path(dir) for dir in args.dataset_dirs]
     output_dir = Path(args.output_dir)
 
     if not output_dir.exists():
@@ -103,9 +121,9 @@ def main():
     create_directories(Path(args.output_dir), ['train', 'val', 'test'], classes)
 
     # Combine all data into a single list with dataset type
-    all_data = [(d, args.image_size, dataset_dir, output_dir, 'train', args.num_frames_for_train, args.num_interval) for d in train_data] + \
-               [(d, args.image_size, dataset_dir, output_dir, 'val', args.num_frames_for_train, args.num_interval) for d in val_data] + \
-               [(d, args.image_size, dataset_dir, output_dir, 'test', args.num_frames_for_train, args.num_interval) for d in test_data]
+    all_data = [(d, args.image_size, dataset_dirs, output_dir, 'train', args.num_frames_for_train, args.num_interval) for d in train_data] + \
+               [(d, args.image_size, dataset_dirs, output_dir, 'val', args.num_frames_for_train, args.num_interval) for d in val_data] + \
+               [(d, args.image_size, dataset_dirs, output_dir, 'test', args.num_frames_for_train, args.num_interval) for d in test_data]
 
     # Multiprocessing for parallel processing of all DICOM files
     with multiprocessing.Pool(args.num_processes) as pool:
@@ -121,4 +139,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

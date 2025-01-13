@@ -1,3 +1,11 @@
+"""
+python tools/dataset_converters/cag_frame_selection.py \
+    /mnt/nas/snubhcvc/raw/cag_ccta_1yr_all/data \
+    /mnt/nas/snubhcvc/raw/cpacs \
+    --output_dir ./data/cag_frame_selection
+    --num_processes 4
+"""
+
 import argparse
 import multiprocessing
 from pathlib import Path
@@ -13,8 +21,8 @@ from mmpretrain_utils.utils import create_directories, get_mongodb_database
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("dataset_dir", type=str, help="Directory containing DICOM data")
-    parser.add_argument("output_dir", type=str, help="Output directory for processed images")
+    parser.add_argument("dataset_dirs", nargs="+", type=str, help="Directory containing DICOM data")
+    parser.add_argument("--output_dir", type=str, help="Output directory for processed images")
     parser.add_argument("--image_size", type=int, default=512, help="Size to which images will be resized")
     parser.add_argument("--num_processes", type=int, default=None, help="Number of processes to use for multiprocessing")
     parser.add_argument("--test_size", type=float, default=0.1, help="Fraction of the data to use for testing")
@@ -46,15 +54,17 @@ def get_data_from_mongodb():
     return data
 
 
-def process_single_dicom(data, image_size, dataset_dir: Path, output_dir: Path, dataset_type: str):
+def process_single_dicom(data, image_size, dataset_dirs: list[Path], output_dir: Path, dataset_type: str):
     """Process a single DICOM file and save frames in the correct split folder."""
     filename = data["filename"]
     frame_idx = data["frame_idx"]
 
-    filepath = dataset_dir / filename
+    filepath = dataset_dirs[0] / filename
     if not filepath.exists():
-        print(f"No such file: {filepath}")
-        return
+        filepath = dataset_dirs[1] / filename
+        if not filepath.exists():
+            print(f"No such file: {filepath}")
+            return
     patient_id = filepath.parents[2].name
     study_date = filepath.parents[1].name
 
@@ -87,7 +97,7 @@ def main():
     args = parse_args()
 
     # Output directory setup
-    dataset_dir = Path(args.dataset_dir)
+    dataset_dirs = [Path(dir) for dir in args.dataset_dirs]
     output_dir = Path(args.output_dir)
 
     if not output_dir.exists():
@@ -103,9 +113,9 @@ def main():
     create_directories(Path(args.output_dir), ['train', 'val', 'test'])
 
     # Combine all data into a single list with dataset type
-    all_data = [(d, args.image_size, dataset_dir, output_dir, 'train') for d in train_data] + \
-               [(d, args.image_size, dataset_dir, output_dir, 'val') for d in val_data] + \
-               [(d, args.image_size, dataset_dir, output_dir, 'test') for d in test_data]
+    all_data = [(d, args.image_size, dataset_dirs, output_dir, 'train') for d in train_data] + \
+               [(d, args.image_size, dataset_dirs, output_dir, 'val') for d in val_data] + \
+               [(d, args.image_size, dataset_dirs, output_dir, 'test') for d in test_data]
 
     # Multiprocessing for parallel processing of all DICOM files
     with multiprocessing.Pool(args.num_processes) as pool:

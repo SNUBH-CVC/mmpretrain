@@ -32,7 +32,7 @@ class CAGFrame(BaseDataset):
         data = self.data_list[idx]
         img = np.load(data["img_path"])
         label = data["gt_label"]
-        return {"img": img, "gt_label": label}
+        return {"img": img, "gt_label": label, "img_path": data["img_path"]}
 
     def load_data_list(self):
         data_root = Path(self.data_root)

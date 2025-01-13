@@ -13,20 +13,24 @@ class LoadCagSingleFrameSelectionData(Transform):
         self.random = random
 
     def __call__(self, data):
-        assert "img" in data.keys() and "gt_label" in data.keys()
+        assert "img" in data.keys() 
 
         frames = data["img"]
         C, T, H, W = frames.shape
         frames_dtype = frames.dtype
         num_frames = T
-        frame_idx = data["gt_label"]  # e.g., 30
+        if "gt_label" in data.keys():
+            frame_idx = data["gt_label"]  # e.g., 30
+            assert frame_idx < num_frames, data['img_path']
+        else:
+            frame_idx = num_frames // 2
 
         if self.random:
             # Random selection of frames around the frame_idx
             new_s_idx_range = list(
                 range(
-                    frame_idx + self.buffer - self.num_sample_frames + 1,
-                    frame_idx - self.buffer + 1,
+                    frame_idx + self.buffer + 1 - self.num_sample_frames,
+                    frame_idx - self.buffer - 1,
                 )
             )
             new_s_idx = np.random.choice(new_s_idx_range)
@@ -50,6 +54,7 @@ class LoadCagSingleFrameSelectionData(Transform):
                     axis=1,
                 )
             new_frame_idx = int(frame_idx - new_s_idx)
+            idx_offset = new_s_idx
 
         else:
             # Non-random: either zero-pad or slice middle range
@@ -60,6 +65,7 @@ class LoadCagSingleFrameSelectionData(Transform):
                 s_idx = e_idx - self.num_sample_frames + 1 # Ensure exact size
                 new_frames = frames[:, s_idx: e_idx + 1]
                 new_frame_idx = frame_idx - s_idx
+                idx_offset = s_idx
             else:
                 pad_left = (self.num_sample_frames - num_frames) // 2
                 pad_right = self.num_sample_frames - num_frames - pad_left
@@ -72,11 +78,13 @@ class LoadCagSingleFrameSelectionData(Transform):
                     axis=1,
                 )
                 new_frame_idx = frame_idx + pad_left
+                idx_offset = -pad_left
 
-        assert new_frames.shape[1] == self.num_sample_frames
+        assert new_frames.shape[1] == self.num_sample_frames, f"new_frames.shape[1]: {new_frames.shape[1]}, self.num_sample_frames: {self.num_sample_frames}"
 
         data["img"] = new_frames
         data["gt_label"] = new_frame_idx
+        data["idx_offset"] = idx_offset
 
         return data
 
@@ -87,22 +95,15 @@ def main():
 
     # insufficient case
     img = np.zeros([1, 30, 32, 32])
-    gt_label = 5
-    out = transform({'img': img, 'gt_label': gt_label})
-    assert out['gt_label'] == 20
+    out = transform({'img': img})
+    assert out['idx_offset'] == -15
 
     # sufficient case
     img = np.zeros([1, 100, 32, 32])
-    gt_label = 5
-    out = transform({'img': img, 'gt_label': gt_label})
-    assert out['gt_label'] == 5
-
-    gt_label = 50
-    out = transform({'img': img, 'gt_label': gt_label})
-    assert out['gt_label'] == 30
+    out = transform({'img': img})
+    assert out['idx_offset'] == 20
 
     # exact case
     img = np.zeros([1, 60, 32, 32])
-    gt_label = 5
-    out = transform({'img': img, 'gt_label': gt_label})
-    assert out['gt_label'] ==5
+    out = transform({'img': img})
+    assert out['idx_offset'] == 0
