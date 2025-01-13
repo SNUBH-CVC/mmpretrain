@@ -1185,7 +1185,7 @@ class Albumentations(BaseTransform):
         self.transforms = transforms
 
         self.aug = albu_Compose(
-            [self.albu_builder(t) for t in self.transforms])
+            [self.albu_builder(t) for t in self.transforms], strict=False)
 
         if not keymap:
             self.keymap_to_albu = dict(img='image')
