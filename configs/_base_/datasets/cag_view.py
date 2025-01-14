@@ -12,7 +12,7 @@ train_pipeline = [
     dict(
         type='Albumentations',
         transforms=[
-            dict(type='Affine', scale=[0.9, 1.0], rotate=[-10, 10], p=prob),
+            dict(type='Affine', scale=[0.9, 1.0], rotate=[-5, 5], p=prob),
             dict(
                 type='OneOf',
             transforms=[

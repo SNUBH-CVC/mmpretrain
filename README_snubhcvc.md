@@ -18,6 +18,9 @@ CUDA_VISIBLE_DEVICES=1 PORT=29500 tools/dist_train.sh configs/video_resnet/video
 
 # CAG frame selection
 CUDA_VISIBLE_DEVICES=1 PORT=29500 tools/dist_train.sh configs/video_resnet/video_resnet_cag_frame.py 1
+
+# CAG view classification 
+CUDA_VISIBLE_DEVICES=0 PORT=29500 tools/dist_train.sh configs/resnet/resnet50_cag_view.py 1
 ```
 
 ## Inference
